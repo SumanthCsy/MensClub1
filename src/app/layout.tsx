@@ -91,7 +91,7 @@ export default function RootLayout({
   }, []);
 
   return (
-    <html lang="en" suppressHydrationWarning> {/* suppressHydrationWarning is key for client-side <html> class changes */}
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="description" content="Premium fashion for gentlemen in Keshavapatnam." />
         {/* Ensure mclogo.png is in the /public directory for this link to work */}
