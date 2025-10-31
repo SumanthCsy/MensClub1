@@ -1,3 +1,4 @@
+
 // @/app/checkout/page.tsx
 "use client";
 
@@ -17,6 +18,8 @@ import type { Order, OrderItem, ShippingAddress as ShippingAddressType, UserData
 import type { User as FirebaseUser } from 'firebase/auth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { AvailableCouponsModal } from '@/components/checkout/AvailableCouponsModal';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function CheckoutPage() {
   const { cartItems, cartTotal, clearCart } = useCart();
@@ -199,7 +202,7 @@ export default function CheckoutPage() {
   }, [toast]);
 
 
-  const handlePlaceOrder = async () => {
+  const handlePlaceOrder = () => {
     if (!currentUser) {
       toast({ title: "Login Required", description: "Please login to place an order.", variant: "destructive" });
       router.push('/login?redirect=/checkout');
@@ -258,38 +261,33 @@ export default function CheckoutPage() {
       createdAt: serverTimestamp(),
     };
 
-    try {
-      const docRef = await addDoc(collection(db, "orders"), newOrderPayload);
-      
-      if (currentUser && currentConfirmedShippingAddress) {
-        try {
-          const userDocRef = doc(db, "users", currentUser.uid);
-          await updateDoc(userDocRef, { defaultShippingAddress: currentConfirmedShippingAddress }, { merge: true });
-        } catch (userUpdateError) {
-          console.warn("Error updating user's default shipping address:", userUpdateError);
+    addDoc(collection(db, "orders"), newOrderPayload)
+    .then(async (docRef) => {
+        if (currentUser && currentConfirmedShippingAddress) {
+            try {
+              const userDocRef = doc(db, "users", currentUser.uid);
+              await updateDoc(userDocRef, { defaultShippingAddress: currentConfirmedShippingAddress }, { merge: true });
+            } catch (userUpdateError) {
+              console.warn("Error updating user's default shipping address:", userUpdateError);
+            }
         }
-      }
-      
-      clearCart();
-      setAppliedCoupon(null);
-      setDiscountAmount(0);
-      router.push(`/checkout/success/${docRef.id}`); 
-      
-    } catch (error: any) {
-      console.error("Data being sent to Firestore for order save:", JSON.stringify(newOrderPayload, null, 2));
-      console.error("Full Firestore error object:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
-      console.error("Firebase error code:", error.code);
-      console.error("Firebase error message:", error.message);
-
-      toast({
-        title: "Order Placement Failed",
-        description: `Error: ${error.message || 'An unknown error occurred.'}. Please check console for more details.`,
-        variant: "destructive",
-        duration: 10000,
-      });
-    } finally {
-      setIsPlacingOrder(false);
-    }
+        
+        clearCart();
+        setAppliedCoupon(null);
+        setDiscountAmount(0);
+        router.push(`/checkout/success/${docRef.id}`);
+    })
+    .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+            path: `orders/new-id`,
+            operation: 'create',
+            requestResourceData: newOrderPayload,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+    })
+    .finally(() => {
+        setIsPlacingOrder(false);
+    });
   };
   
   let formInitialData: Partial<ShippingFormValues> = { country: "India", email: currentUser?.email || "" };

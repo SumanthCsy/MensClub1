@@ -1,3 +1,4 @@
+
 // src/app/products/[id]/page.tsx
 "use client"; // This page is a client component
 
@@ -35,6 +36,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 // Client Component that handles all the logic and state
 function ProductDetailsClientContent({ productId }: { productId: string }) {
@@ -164,53 +167,78 @@ function ProductDetailsClientContent({ productId }: { productId: string }) {
       avatarUrl: currentUser.photoURL || null, // Ensure null instead of undefined
       rating, comment, date: new Date().toISOString(),
     };
-    try {
-      const productRef = doc(db, "products", prodId);
-      const currentProductSnap = await getDoc(productRef);
-      if (!currentProductSnap.exists()) throw new Error("Product not found for review submission.");
-      const currentProductData = currentProductSnap.data() as Product;
-      const existingReviews = currentProductData.reviews || [];
-      if (existingReviews.some(review => review.userId === currentUser.uid)) {
-        toast({ title: "Already Reviewed", description: "You have already submitted a review for this product.", variant: "default" }); return;
-      }
-      await updateDoc(productRef, { reviews: arrayUnion(newReview) });
-      toast({ title: "Review Submitted!", description: "Thank you for your feedback." });
-    } catch (error: any) {
-      console.error("Error submitting review:", error);
-      console.error("Firebase error code:", error.code);
-      console.error("Firebase error message:", error.message);
-      toast({ title: "Review Submission Failed", description: `Could not save review: ${error.message || 'Please try again.'}`, variant: "destructive", duration: 7000 });
-    }
+    
+    const productRef = doc(db, "products", prodId);
+    updateDoc(productRef, { reviews: arrayUnion(newReview) })
+    .then(() => {
+        toast({ title: "Review Submitted!", description: "Thank you for your feedback." });
+    })
+    .catch(async (serverError) => {
+        const currentProductSnap = await getDoc(productRef);
+        if (!currentProductSnap.exists()) {
+            toast({ title: "Error", description: "Product not found for review submission.", variant: "destructive" });
+            return;
+        }
+        const currentProductData = currentProductSnap.data() as Product;
+        const existingReviews = currentProductData.reviews || [];
+        if (existingReviews.some(review => review.userId === currentUser.uid)) {
+            toast({ title: "Already Reviewed", description: "You have already submitted a review for this product.", variant: "default" });
+            return;
+        }
+
+        const permissionError = new FirestorePermissionError({
+            path: productRef.path,
+            operation: 'update',
+            requestResourceData: { reviews: arrayUnion(newReview) },
+        });
+        errorEmitter.emit('permission-error', permissionError);
+    });
   }, [currentUser, product, toast]);
 
   const handleDeleteReview = useCallback(async (prodId: string, reviewId: string, reviewObject: Review) => {
     if (!currentUser || !product) { toast({ title: "Error", description: "Action not allowed or product not found.", variant: "destructive" }); return; }
     if (reviewObject.userId !== currentUser.uid) { toast({ title: "Unauthorized", description: "You can only delete your own reviews.", variant: "destructive" }); return; }
-    try {
-      const productRef = doc(db, "products", prodId);
-      await updateDoc(productRef, { reviews: arrayRemove(reviewObject) });
-      toast({ title: "Review Deleted", description: "Your review has been successfully deleted." });
-    } catch (error: any) {
-      console.error("Error deleting review:", error);
-      toast({ title: "Deletion Failed", description: `Could not delete review: ${error.message}`, variant: "destructive" });
-    }
+    
+    const productRef = doc(db, "products", prodId);
+    updateDoc(productRef, { reviews: arrayRemove(reviewObject) })
+    .then(() => {
+        toast({ title: "Review Deleted", description: "Your review has been successfully deleted." });
+    })
+    .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+            path: productRef.path,
+            operation: 'update',
+            requestResourceData: { reviews: arrayRemove(reviewObject) },
+        });
+        errorEmitter.emit('permission-error', permissionError);
+    });
   }, [currentUser, product, toast]);
 
   const handleUpdateReview = useCallback(async (prodId: string, reviewId: string, newRating: number, newComment: string) => {
     if (!currentUser || !product) { toast({ title: "Error", description: "Action not allowed or product not found.", variant: "destructive" }); return; }
-    try {
-      const productRef = doc(db, "products", prodId);
-      const productSnap = await getDoc(productRef);
-      if (!productSnap.exists()) throw new Error("Product not found for review update.");
-      const productData = productSnap.data() as Product;
-      const reviews = productData.reviews || [];
-      const updatedReviews = reviews.map(review => review.id === reviewId && review.userId === currentUser.uid ? { ...review, rating: newRating, comment: newComment, date: new Date().toISOString() } : review);
-      await updateDoc(productRef, { reviews: updatedReviews });
-      toast({ title: "Review Updated", description: "Your review has been updated." });
-    } catch (error: any) {
-      console.error("Error updating review:", error);
-      toast({ title: "Update Failed", description: `Could not update review: ${error.message}`, variant: "destructive" });
+    
+    const productRef = doc(db, "products", prodId);
+    const productSnap = await getDoc(productRef);
+    if (!productSnap.exists()) {
+        toast({ title: "Error", description: "Product not found for review update.", variant: "destructive" });
+        return;
     }
+    const productData = productSnap.data() as Product;
+    const reviews = productData.reviews || [];
+    const updatedReviews = reviews.map(review => review.id === reviewId && review.userId === currentUser.uid ? { ...review, rating: newRating, comment: newComment, date: new Date().toISOString() } : review);
+    
+    updateDoc(productRef, { reviews: updatedReviews })
+    .then(() => {
+        toast({ title: "Review Updated", description: "Your review has been updated." });
+    })
+    .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+            path: productRef.path,
+            operation: 'update',
+            requestResourceData: { reviews: updatedReviews },
+        });
+        errorEmitter.emit('permission-error', permissionError);
+    });
   }, [currentUser, product, toast]);
 
   const handleCopyLink = () => {
@@ -346,5 +374,3 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
   }
   return <ProductDetailsClientContent productId={productId} />;
 }
-
-    

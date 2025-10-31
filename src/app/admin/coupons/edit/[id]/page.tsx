@@ -1,3 +1,4 @@
+
 // @/app/admin/coupons/edit/[id]/page.tsx
 "use client";
 
@@ -16,6 +17,8 @@ import type { Coupon } from '@/types';
 import { doc, getDoc, updateDoc, Timestamp } from "firebase/firestore";
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 // Helper to format Date or Timestamp to 'yyyy-MM-ddTHH:mm' for datetime-local input
 const formatDateForInput = (date: any): string => {
@@ -106,7 +109,7 @@ export default function EditCouponPage() {
     setFormData(prev => ({ ...prev, discountType: value }));
   };
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!originalCoupon || !formData) {
       toast({ title: "Error", description: "Coupon data not fully loaded.", variant: "destructive"});
@@ -151,27 +154,27 @@ export default function EditCouponPage() {
       delete couponDataToUpdate.minPurchaseAmount;
     }
 
-
-    try {
-      const couponRef = doc(db, "coupons", couponId);
-      await updateDoc(couponRef, couponDataToUpdate);
-      toast({
-        title: "Coupon Updated!",
-        description: `Coupon ${couponDataToUpdate.code} has been successfully updated.`,
-        duration: 7000,
-      });
-      router.push('/admin/coupons');
-    } catch (error: any) {
-      console.error("Error updating coupon: ", error);
-      toast({
-        title: "Error Updating Coupon",
-        description: `There was an issue updating the coupon. ${error.message || 'Check console for details.'}`,
-        variant: "destructive",
-        duration: 7000,
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+    const couponRef = doc(db, "coupons", couponId);
+    updateDoc(couponRef, couponDataToUpdate)
+    .then(() => {
+        toast({
+            title: "Coupon Updated!",
+            description: `Coupon ${couponDataToUpdate.code} has been successfully updated.`,
+            duration: 7000,
+        });
+        router.push('/admin/coupons');
+    })
+    .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+            path: couponRef.path,
+            operation: 'update',
+            requestResourceData: couponDataToUpdate,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+    })
+    .finally(() => {
+        setIsSubmitting(false);
+    });
   };
 
   if (isLoading) {

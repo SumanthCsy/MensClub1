@@ -15,6 +15,8 @@ import { useToast } from '@/hooks/use-toast';
 import type { Coupon } from '@/types';
 import { collection, addDoc, serverTimestamp, Timestamp } from "firebase/firestore";
 import { db } from '@/lib/firebase';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 type CouponFormData = Omit<Coupon, 'id' | 'createdAt' | 'isActive' | 'expiryDate' | 'minPurchaseAmount'> & {
   expiryDateInput?: string; // For datetime-local input
@@ -52,7 +54,7 @@ export default function AddCouponPage() {
     setFormData(prev => ({ ...prev, discountType: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
 
@@ -99,29 +101,26 @@ export default function AddCouponPage() {
         delete (couponDataToSave as Partial<Coupon>).expiryDate;
     }
 
-
-    try {
-      const docRef = await addDoc(collection(db, "coupons"), couponDataToSave);
-      toast({
-        title: "Coupon Added Successfully!",
-        description: `Coupon ${couponDataToSave.code} has been saved with ID: ${docRef.id}.`,
-        duration: 7000,
-      });
-      setFormData(initialFormData); // Reset form
-    } catch (error: any) {
-      console.error("Error adding coupon: ", error);
-      console.error("Data sent to Firestore: ", JSON.stringify(couponDataToSave));
-      console.error("Firebase error code:", error.code);
-      console.error("Firebase error message:", error.message);
-      toast({
-        title: "Error Saving Coupon",
-        description: `There was an issue saving the coupon. ${error.message || 'Check console for details.'}`,
-        variant: "destructive",
-        duration: 7000,
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+    addDoc(collection(db, "coupons"), couponDataToSave)
+    .then((docRef) => {
+        toast({
+            title: "Coupon Added Successfully!",
+            description: `Coupon ${couponDataToSave.code} has been saved with ID: ${docRef.id}.`,
+            duration: 7000,
+        });
+        setFormData(initialFormData); // Reset form
+    })
+    .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: `coupons/new-id`, // Path is dynamic, so we use a placeholder
+          operation: 'create',
+          requestResourceData: couponDataToSave,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+    })
+    .finally(() => {
+        setIsSubmitting(false);
+    });
   };
 
   return (

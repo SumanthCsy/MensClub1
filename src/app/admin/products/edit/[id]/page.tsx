@@ -1,3 +1,4 @@
+
 // @/app/admin/products/edit/[id]/page.tsx
 "use client";
 
@@ -18,6 +19,8 @@ import { doc, getDoc, updateDoc, Timestamp } from "firebase/firestore";
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 import { CustomLoader } from '@/components/layout/CustomLoader';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 const productCategories = [
   "New Arrivals",
@@ -212,7 +215,7 @@ export default function EditProductPage() {
     });
   };
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!originalProduct || !formData) {
       toast({ title: "Error", description: "Product data not loaded.", variant: "destructive" }); return;
@@ -269,18 +272,23 @@ export default function EditProductPage() {
     if (productDataToUpdate.offerStartDate === undefined) delete (productDataToUpdate as Partial<Product>).offerStartDate;
     if (productDataToUpdate.offerEndDate === undefined) delete (productDataToUpdate as Partial<Product>).offerEndDate;
 
-
-    try {
-      const productRef = doc(db, "products", productId);
-      await updateDoc(productRef, productDataToUpdate);
-      toast({ title: "Product Updated!", description: `${productDataToUpdate.name} has been updated.`, duration: 7000 });
-      router.push('/admin/products/view');
-    } catch (error: any) {
-      console.error("Error updating product: ", error);
-      toast({ title: "Error Updating Product", description: `Issue: ${error.message}`, variant: "destructive", duration: 7000 });
-    } finally {
-      setIsSubmitting(false);
-    }
+    const productRef = doc(db, "products", productId);
+    updateDoc(productRef, productDataToUpdate)
+    .then(() => {
+        toast({ title: "Product Updated!", description: `${productDataToUpdate.name} has been updated.`, duration: 7000 });
+        router.push('/admin/products/view');
+    })
+    .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+            path: productRef.path,
+            operation: 'update',
+            requestResourceData: productDataToUpdate,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+    })
+    .finally(() => {
+        setIsSubmitting(false);
+    });
   };
 
   if (isLoading) {

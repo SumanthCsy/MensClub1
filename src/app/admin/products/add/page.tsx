@@ -17,6 +17,8 @@ import type { Product, ProductVariant } from '@/types';
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from '@/lib/firebase';
 import { AppWindow } from 'lucide-react'; // Placeholder for pants icon
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 const productCategories = [
   "New Arrivals",
@@ -171,7 +173,7 @@ export default function AddProductPage() {
   };
 
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
 
@@ -219,29 +221,29 @@ export default function AddProductPage() {
     if (!productDataToSave.offerEndDate) delete (productDataToSave as Partial<Product>).offerEndDate;
 
 
-    try {
-      const docRef = await addDoc(collection(db, "products"), {
-        ...productDataToSave,
-        createdAt: serverTimestamp()
-      });
-      toast({ title: "Product Added Successfully!", description: `${productDataToSave.name} has been saved.`, duration: 7000 });
-      // Reset form state
-      setFormData(initialFormData);
-      setVariants([{ size: '', stock: 0, sku: '' }]);
-      setMainImagePreview(null); setMainImageFile(null);
-      setAdditionalImagePreviews([]); setAdditionalImageFiles([]);
-      // Clear file inputs
-      const mainImageInput = document.getElementById('mainImageFile') as HTMLInputElement; if (mainImageInput) mainImageInput.value = '';
-      const additionalImagesInput = document.getElementById('additionalImagesFile') as HTMLInputElement; if (additionalImagesInput) additionalImagesInput.value = '';
-    } catch (error: any) {
-      console.error("Error adding product: ", error);
-      console.error("Data sent to Firestore: ", JSON.stringify(productDataToSave));
-      console.error("Firebase error code:", error.code);
-      console.error("Firebase error message:", error.message);
-      toast({ title: "Error Saving Product", description: `There was an issue: ${error.message || 'Check console for details.'}`, variant: "destructive", duration: 7000 });
-    } finally {
-      setIsSubmitting(false);
-    }
+    addDoc(collection(db, "products"), { ...productDataToSave, createdAt: serverTimestamp()})
+    .then((docRef) => {
+        toast({ title: "Product Added Successfully!", description: `${productDataToSave.name} has been saved.`, duration: 7000 });
+        // Reset form state
+        setFormData(initialFormData);
+        setVariants([{ size: '', stock: 0, sku: '' }]);
+        setMainImagePreview(null); setMainImageFile(null);
+        setAdditionalImagePreviews([]); setAdditionalImageFiles([]);
+        // Clear file inputs
+        const mainImageInput = document.getElementById('mainImageFile') as HTMLInputElement; if (mainImageInput) mainImageInput.value = '';
+        const additionalImagesInput = document.getElementById('additionalImagesFile') as HTMLInputElement; if (additionalImagesInput) additionalImagesInput.value = '';
+    })
+    .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+            path: `products/new-id`, // Path is dynamic for new docs
+            operation: 'create',
+            requestResourceData: productDataToSave,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+    })
+    .finally(() => {
+        setIsSubmitting(false);
+    });
   };
 
   return (
@@ -420,4 +422,3 @@ export default function AddProductPage() {
     </div>
   );
 }
-

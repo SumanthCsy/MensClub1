@@ -1,3 +1,4 @@
+
 // @/app/layout.tsx
 "use client"; // Mark as a Client Component module
 
@@ -13,6 +14,7 @@ import { FloatingContactButtons } from '@/components/layout/FloatingContactButto
 import { GlobalAdminNotifications } from '@/components/layout/GlobalAdminNotifications';
 import { SiteCouponPopup } from '@/components/layout/SiteCouponPopup';
 import { PageTransitionLoader } from '@/components/layout/PageTransitionLoader';
+import { FirebaseErrorListener } from '@/components/layout/FirebaseErrorListener'; // Import the new listener
 
 import { useEffect, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -105,6 +107,7 @@ export default function RootLayout({
       >
         <CartProvider>
           <WishlistProvider>
+            <FirebaseErrorListener />
             <PageTransitionLoader />
             <Navbar />
             <main className="flex-grow">{children}</main>
