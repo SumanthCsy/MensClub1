@@ -1,39 +1,65 @@
 
-// /public/service-worker.js
+// public/service-worker.js
 
-// This is the service worker that will handle push notifications.
+// This command is crucial. It tells the new service worker to take over the page
+// and start controlling it immediately, without waiting for the user to close all tabs.
+self.addEventListener('install', (event) => {
+  console.log('Service Worker: Installing...');
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  console.log('Service Worker: Activating...');
+  // This ensures that any old service workers are cleaned up.
+  event.waitUntil(self.clients.claim());
+});
 
 self.addEventListener('push', (event) => {
-  if (!event.data) {
-    console.log('Push event but no data');
-    return;
+  console.log('Service Worker: Push event received.');
+  
+  let data;
+  try {
+    data = event.data.json();
+  } catch (e) {
+    console.error('Service Worker: Could not parse push data.', e);
+    data = {
+      title: 'New Notification',
+      body: 'You have a new update.',
+      url: '/',
+    };
   }
 
-  const data = event.data.json();
-  const title = data.title || 'Mens Club Keshavapatnam';
+  const { title, body, url } = data;
+
   const options = {
-    body: data.body || 'You have a new notification.',
-    icon: data.icon || '/mclogo.png', // Default icon
-    badge: data.badge || '/mclogo.png', // Icon for notification bar on mobile
-    sound: data.sound || undefined, // The custom sound path
-    vibrate: data.vibrate || [200, 100, 200], // Vibration pattern
-    tag: data.tag || 'general-notification', // Groups notifications
-    renotify: true, // Re-notify if a new notification has the same tag
+    body: body,
+    icon: '/mclogo.png', // Main icon for the notification
+    badge: '/mclogo.png', // Small icon, often shown in the status bar
+    vibrate: [200, 100, 200], // Vibration pattern
     data: {
-      url: data.url || '/', // URL to open on click
+      url: url, // URL to open on click
     },
   };
 
+  // The waitUntil() method ensures the service worker doesn't terminate
+  // until the notification is displayed.
   event.waitUntil(
     self.registration.showNotification(title, options)
   );
 });
 
 self.addEventListener('notificationclick', (event) => {
-  event.notification.close(); // Close the notification
+  console.log('Service Worker: Notification clicked.');
+  
+  // Close the notification
+  event.notification.close();
 
-  // Open the URL specified in the notification data, or the root URL
+  // Open the URL specified in the notification data
+  const urlToOpen = event.notification.data.url || '/';
+
+  // The waitUntil() ensures the browser doesn't terminate the service worker
+  // before the new window/tab has been opened.
   event.waitUntil(
-    clients.openWindow(event.notification.data.url || '/')
+    self.clients.openWindow(urlToOpen)
   );
 });

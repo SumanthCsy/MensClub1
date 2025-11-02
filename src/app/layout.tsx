@@ -54,7 +54,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   useEffect(() => {
-    document.title = 'Mens Club Keshavapatnam'; // Moved from ProductDetailsPage
+    document.title = 'Mens Club Keshavapatnam';
+
+    // Service Worker Registration
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js').then(registration => {
+          console.log('Service Worker registered with scope:', registration.scope);
+        }).catch(error => {
+          console.error('Service Worker registration failed:', error);
+        });
+      });
+    }
 
     const settingsRef = doc(db, "settings", "themeConfiguration");
     const unsubscribe = onSnapshot(settingsRef, (docSnap) => {
