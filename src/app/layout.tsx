@@ -96,8 +96,10 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="description" content="Premium fashion for gentlemen in Keshavapatnam." />
-        {/* Ensure mclogo.png is in the /public directory for this link to work */}
-        <link rel="icon" href="/mclogo.png" type="image/png" sizes="any"/>
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <link rel="apple-touch-icon" href="/mclogo.png" />
+        <meta name="theme-color" content="#ffffff" />
+        <link rel="icon" href="/mclogo.png" type="image/png" sizes="any" />
       </head>
       <body
         className={cn(

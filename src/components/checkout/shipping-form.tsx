@@ -79,7 +79,7 @@ export function ShippingForm({ onSubmit, initialData = {} }: ShippingFormProps) 
                 <FormItem>
                   <FormLabel>Email Address</FormLabel>
                   <FormControl>
-                    <Input placeholder="you@example.com" {...field} className="h-11 text-base" suppressHydrationWarning={true} />
+                    <Input placeholder="you@gmail.com" {...field} className="h-11 text-base" suppressHydrationWarning={true} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -92,7 +92,7 @@ export function ShippingForm({ onSubmit, initialData = {} }: ShippingFormProps) 
                 <FormItem>
                   <FormLabel>Full Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="John Doe" {...field} className="h-11 text-base" suppressHydrationWarning={true}/>
+                    <Input placeholder="Your Name" {...field} className="h-11 text-base" suppressHydrationWarning={true}/>
                   </FormControl>
                   <FormMessage />
                 </FormItem>

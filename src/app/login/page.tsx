@@ -10,14 +10,15 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { LogIn, Mail, KeyRound, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { auth, db } from '@/lib/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import type { UserData } from '@/types';
+import { CustomLoader } from '@/components/layout/CustomLoader';
 
 
-export default function LoginPage() {
+function LoginPageContent() {
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -129,12 +130,11 @@ export default function LoginPage() {
     } catch (error: any) {
       console.error("Login error: ", error);
       let friendlyMessage = "Invalid details or user not found.";
-      // You can check for specific error codes if needed, e.g.,
-      // if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-      //   friendlyMessage = "Invalid email or password. Please try again.";
-      // } else if (error.code === 'auth/too-many-requests') {
-      //   friendlyMessage = "Too many login attempts. Please try again later."
-      // }
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        friendlyMessage = "Invalid email or password. Please try again.";
+      } else if (error.code === 'auth/too-many-requests') {
+        friendlyMessage = "Too many login attempts. Please try again later."
+      }
       toast({
         title: "Login Failed",
         description: friendlyMessage,
@@ -199,7 +199,7 @@ export default function LoginPage() {
               </div>
             </div>
             <div className="flex items-center justify-between">
-              <Link href="#" className="text-sm text-primary hover:underline">
+              <Link href="/forgot-password" className="text-sm text-primary hover:underline">
                 Forgot password?
               </Link>
             </div>
@@ -226,5 +226,14 @@ export default function LoginPage() {
         </CardFooter>
       </Card>
     </div>
+  );
+}
+
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><CustomLoader /></div>}>
+      <LoginPageContent />
+    </Suspense>
   );
 }

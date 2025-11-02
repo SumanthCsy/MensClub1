@@ -97,7 +97,7 @@ export default function SignupPage() {
                 <Input 
                   id="fullName" 
                   type="text" 
-                  placeholder="John Doe" 
+                  placeholder="Your Name" 
                   required 
                   className="pl-10 h-11 text-base"
                   value={fullName}
@@ -113,7 +113,7 @@ export default function SignupPage() {
                 <Input 
                   id="email" 
                   type="email" 
-                  placeholder="you@example.com" 
+                  placeholder="you@gmail.com" 
                   required 
                   className="pl-10 h-11 text-base"
                   value={email}
