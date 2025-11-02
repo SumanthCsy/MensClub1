@@ -80,7 +80,7 @@ export function GlobalAdminNotifications() {
         
         let subscription = await registration.pushManager.getSubscription();
         if (!subscription) {
-            const vapidPublicKey = 'YOUR_VAPID_PUBLIC_KEY'; // Replace with your actual VAPID public key
+            const vapidPublicKey = 'BChHHP90TSqXkJWwE1EbDP_tXsvluIYidA4SODw8wPqqEnYKRR5sy9Bl34LH1XQIR5LkyWR3ZPlG4sC2EfppWiU'; // Replace with your actual VAPID public key
             if (!vapidPublicKey.startsWith('B')) {
                 console.error("VAPID public key is missing or invalid. Push notifications will not work.");
                 toast({ title: "Setup Incomplete", description: "Push notification setup is incomplete. Admin needs to configure VAPID keys.", variant: "destructive" });
