@@ -1,7 +1,7 @@
 // @/app/products/page.tsx
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { Suspense, useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ProductCard } from '@/components/products/product-card';
 import type { Product } from '@/types';
@@ -22,7 +22,7 @@ const productCategories = [
   "Limited Time Offers"
 ];
 
-export default function ProductsPage() {
+function ProductsPageContent() {
   const searchParams = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -30,7 +30,6 @@ export default function ProductsPage() {
 
   const currentCategory = useMemo(() => searchParams.get('category') || "All Categories", [searchParams]);
   const currentSortBy = useMemo(() => searchParams.get('sortBy') || "featured", [searchParams]);
-  // const currentSearchQuery = useMemo(() => searchParams.get('q') || "", [searchParams]); // For future search implementation
 
   useEffect(() => {
     setIsLoading(true);
@@ -43,26 +42,12 @@ export default function ProductsPage() {
       constraints.push(where("category", "==", currentCategory));
     }
 
-    // TODO: Implement search query filtering if currentSearchQuery is used
-    // if (currentSearchQuery) {
-    //   constraints.push(where("name", ">=", currentSearchQuery));
-    //   constraints.push(where("name", "<=", currentSearchQuery + '\uf8ff'));
-    // }
-
-    let sortField = "name"; // Default sort
+    let sortField = "name";
     let sortDirection: "asc" | "desc" = "asc";
 
     if (currentSortBy === "newest") {
-      // Assuming you add a 'createdAt' timestamp field for "newest"
-      // If not, Firestore requires an explicit order for any field used in where() if not the first orderBy()
-      // For now, let's assume 'createdAt' exists or fallback to name
-      // Add: constraints.push(orderBy("createdAt", "desc"));
-      // If 'createdAt' is not guaranteed, you might need to adjust or ensure it exists.
-      // For simplicity now, if 'newest' is selected, let's assume a 'createdAt' field exists.
-      // Or handle this by fetching all and sorting client-side if 'createdAt' is unreliable.
-      // console.warn("Sorting by 'newest' assumes a 'createdAt' field exists on products.");
-      sortField = "name"; // Defaulting to name if 'createdAt' is not a reliable sort field across all products
-      sortDirection = "desc"; // Simulate newest by name desc for now
+      sortField = "name";
+      sortDirection = "desc";
     } else if (currentSortBy === "price-asc") {
       sortField = "price";
       sortDirection = "asc";
@@ -88,10 +73,9 @@ export default function ProductsPage() {
       setIsLoading(false);
     });
 
-    // Cleanup listener
     return () => unsubscribe();
 
-  }, [currentCategory, currentSortBy]); // Add currentSearchQuery if implemented
+  }, [currentCategory, currentSortBy]);
 
   return (
     <div className="container mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8 py-12 md:py-16">
@@ -155,5 +139,13 @@ export default function ProductsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={<div className="container mx-auto flex justify-center items-center min-h-screen"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>}>
+      <ProductsPageContent />
+    </Suspense>
   );
 }
