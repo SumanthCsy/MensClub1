@@ -1,3 +1,4 @@
+
 // @/app/checkout/success/[orderId]/page.tsx
 "use client";
 
@@ -13,34 +14,36 @@ export default function OrderSuccessPage() {
   const orderId = params.orderId as string;
   const [isIconAnimated, setIsIconAnimated] = useState(false);
   const [showTextContent, setShowTextContent] = useState(false);
-  const soundPlayedRef = useRef(false); // Ref to track if sound has played
+  const soundPlayedRef = useRef(false);
 
   useEffect(() => {
     // Play sound effect only once when this component mounts
     if (!soundPlayedRef.current) {
       console.log("[OrderSuccessPage] Attempting to play success sound for order:", orderId);
-      const audio = new Audio('/success.mp3'); // Ensure success.mp3 is in your /public directory
+      const audio = new Audio('/success.mp3');
       audio.play().catch(error => {
-        console.warn("[OrderSuccessPage] Audio autoplay was prevented for /success.mp3. This is often a browser policy. Error:", error);
+        // This is common if the user hasn't interacted with the page first.
+        // We log it as a warning, not a critical error.
+        console.warn("[OrderSuccessPage] Audio autoplay for /success.mp3 was prevented. This is a browser policy. Error:", error);
       });
-      soundPlayedRef.current = true; // Set the flag to true after attempting to play
+      soundPlayedRef.current = true;
     }
 
     // Trigger icon animation
     const iconAnimationTimer = setTimeout(() => {
       setIsIconAnimated(true);
-    }, 100); // Small delay to allow initial render for icon
+    }, 100);
 
-    // Trigger text content visibility after icon animation (and sound starts)
+    // Trigger text content visibility after icon animation
     const textContentTimer = setTimeout(() => {
       setShowTextContent(true);
-    }, 700); // Delay for text to appear
+    }, 700);
 
     return () => {
       clearTimeout(iconAnimationTimer);
       clearTimeout(textContentTimer);
     };
-  }, []); // Empty dependency array ensures this effect runs only once on mount
+  }, [orderId]); // Added orderId to dependency array, although it won't change on this page
 
   return (
     <div className="container mx-auto max-w-screen-md px-4 sm:px-6 lg:px-8 py-16 md:py-24 flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] text-center">
